@@ -200,7 +200,6 @@ def get_person_influence(filters):
     return G
 
 def run_clef(filters):
-    NODE_PROPS = ['full_name', 'national_no', 'phone_number', 'principal_coordinator', 'sub_coordinator', 'primary_key']
     target_box = filters.get('box')
     target_center = filters.get('center')
     target_circle = filters.get('circle')
@@ -257,13 +256,11 @@ def run_clef(filters):
     )
     
     # augment with node details
-    out = (
-        clef_result
-        .assign(
-            **{k:lambda x: x['nodeId'].apply(lambda y: gds.util.nodeProperty(G, y, k))
-               for k in NODE_PROPS
-               }
-        )
-    )
+    _props = ['score', 'full_name', 'national_no', 'phone_number', 'principal_coordinator', 'sub_coordinator', 'primary_key']
+    out = []
+    for tup in clef_result.itertuples():
+        out.append(gds.util.asNode(tup.nodeId)._properties | {'score': tup.spread})
+    
+    out = pd.DataFrame(out)[_props].sort_values('score', ascending=False)
     return clef_result
 # --------------------------------------------------------------------------------------------------
