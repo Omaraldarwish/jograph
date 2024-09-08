@@ -214,18 +214,21 @@ def run_clef(filters):
 
     if target_box:
         MATCH_BLOCK = f"""
-            MATCH (person:Person)--(box:Box), (person)-[:{target_relationships}]-(relative:Person)-->(box:Box)
+            MATCH (person:Person)--(box:Box)
             WHERE elementId(box) = '{target_box}'
+            MATCH (person)-[:{target_relationships}]-(relative:Person)-->(box:Box)
         """
     elif target_center:
         MATCH_BLOCK = f"""
-            MATCH (person:Person)--(box:Box)--(center:Center), (person)-[:{target_relationships}]-(relative:Person)-->(box:Box)--(center:Center)
+            MATCH (person:Person)--(box:Box)--(center:Center)
             WHERE elementId(center) = '{target_center}'
+            MATCH (person)-[:{target_relationships}]-(relative:Person)-->(box:Box)--(center:Center)
         """
     else:
         MATCH_BLOCK = f"""
-            MATCH (person:Person)--(box:Box)--(center:Center)--(circle:Circle), (person)-[:{target_relationships}]-(relative:Person)-->(box:Box)--(center:Center)--(circle:Circle)
+            MATCH (person:Person)--(box:Box)--(center:Center)--(circle:Circle)
             WHERE elementId(circle) = '{target_circle}'
+            MATCH (person)-[:{target_relationships}]-(relative:Person)-->(box:Box)--(center:Center)--(circle:Circle)
         """
     
     
@@ -233,6 +236,7 @@ def run_clef(filters):
     
     # build graph projection
     _projection_name = str(uuid4())
+    
     build_q = f"""
         {MATCH_BLOCK}
         RETURN gds.graph.project('{_projection_name}', person, relative)
