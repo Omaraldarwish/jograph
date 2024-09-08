@@ -2,7 +2,7 @@ from turtle import circle
 from polars import col
 import streamlit as st
 
-from utils.graph import get_circles, get_centers, get_boxes, get_family_counts
+from utils.graph import get_circles, get_centers, get_boxes, get_family_counts, get_counts
 
 st.set_page_config(layout="wide")
 st.title('Elections Graph Search')
@@ -59,6 +59,10 @@ query_filters = {
     }
 
 st.write(query_filters)
+
+counts = get_counts(query_filters)
+
+st.write(counts)
 
 with st.sidebar:    
     if st.button('Search'):

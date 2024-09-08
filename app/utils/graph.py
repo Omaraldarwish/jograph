@@ -56,6 +56,54 @@ def get_boxes(circle_id, center_id):
 
 # --------------------------------------------------------------------------------------------------
 
+def get_circle_center_box_voter_counts(filters):
+    
+    target_box = filters.get('box')
+    target_center = filters.get('center')
+    target_circle = filters.get('circle')
+
+    if target_box:
+        q = f"""
+            MATCH (p:Person)--(b:Box)
+            WHERE elementId(b) = '{target_box}'
+            RETURN COUNT(DISTINCT p) as num_voters
+        """
+        num_centers = 1
+        num_boxes = 1
+        num_voters = run_query(q)[0]['num_voters']
+
+    elif target_center:
+        q = f"""
+            MATCH (p:Person)--(b:Box)--(c:Center)
+            WHERE elementId(c) = '{target_center}'
+            RETURN COUNT(DISTINCT p) as num_voters, COUNT(DISTINCT b) as num_boxes
+        """
+
+        res = run_query(q)[0]
+        num_centers = 1
+        num_boxes = res['num_boxes']
+        num_voters = res['num_voters']
+
+    else:
+        q = f"""
+            MATCH (p:Person)--(b:Box)--(c:Center)--(ci:Circle)
+            WHERE elementId(ci) = '{target_circle}'
+            RETURN COUNT(DISTINCT p) as num_voters, COUNT(DISTINCT b) as num_boxes, COUNT(DISTINCT c) as num_centers
+        """
+
+        res = run_query(q)[0]
+        num_centers = res['num_centers']
+        num_boxes = res['num_boxes']
+        num_voters = res['num_voters']
+
+    return {
+        'num_centers': num_centers,
+        'num_boxes': num_boxes,
+        'num_voters': num_voters
+    }
+    
+
+
 def get_family_counts(filters):
     
     target_box = filters.get('box')
@@ -108,7 +156,7 @@ def get_family_counts(filters):
     """
     print('execuitng query ... ')
     data = run_query(q)
-    
+
     return pd.DataFrame(data)
 # --------------------------------------------------------------------------------------------------
 
