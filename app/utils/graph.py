@@ -260,7 +260,7 @@ def run_clef(filters):
     out = (
         clef_result
         .assign(
-            **{k:lambda x: x['node'].apply(lambda y: gds.util.nodeProperty(G, y['nodeId'], k))
+            **{k:lambda x: x['nodeId'].apply(lambda y: gds.util.nodeProperty(G, y, k))
                for k in ['full_name', 'national_no', 'phone_number', 'principal_coordinator', 'sub_coordinator', 'primary_key']
                }
         )
