@@ -71,6 +71,7 @@ def load_from_raw(
         .filter(pl.col('is_unique_shrink_name') & pl.col('unmatched') == 0)
         .filter((pl.col('national_no') != 'missing'))
         .select([
+            'full_name',
             'first_name',
             'father_name',
             'grand_name',
@@ -80,6 +81,9 @@ def load_from_raw(
             'mother_national_no',
             'new_big_key',
             'dob',
+            'age',
+            'religion',
+            'address',
             'circle',
             'center',
             'box',
@@ -171,6 +175,7 @@ def load_from_raw(
             result = session.run("""
                 LOAD CSV WITH HEADERS FROM 'file:///staged.csv' AS row
                 CREATE (p:Person {
+                    full_name: row.full_name,
                     first_name: row.first_name,
                     father_name: row.father_name,
                     grand_name: row.grand_name,
@@ -180,6 +185,9 @@ def load_from_raw(
                     mother_national_no: row.mother_national_no,
                     new_big_key: row.new_big_key,
                     dob: row.dob,
+                    age: row.age,
+                    religion: reow.religion,
+                    address: row.address,
                     circle: row.circle,
                     center: row.center,
                     box: toString(row.box),
@@ -226,6 +234,7 @@ def load_from_raw(
                 result = session.run("""
                     LOAD CSV WITH HEADERS FROM 'file:///staged.csv' AS row
                     CREATE (p:Person {
+                        full_name: 'missing',
                         first_name: 'missing',
                         father_name: 'missing',
                         grand_name: 'missing',
@@ -235,12 +244,15 @@ def load_from_raw(
                         mother_national_no: 'missing',
                         new_big_key: 'missing',
                         dob: 'missing',
+                        age: 'missing',
+                        religion: 'missing',
+                        address: 'missing',
                         circle: 'missing',
                         center: 'missing',
                         box: 'missing',
                         is_missing: true,
                                      
-                        phone_numer: 'missing',
+                        phone_number: 'missing',
                         credibility: 'missing',
                         type: 'missing',
                         principal_coordinator: 'missing',
