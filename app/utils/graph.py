@@ -107,7 +107,7 @@ def get_counts(filters):
     
 
 
-def get_family_counts(filters):
+def get_relative_counts(filters):
     
     target_box = filters.get('box')
     target_center = filters.get('center')
@@ -117,21 +117,19 @@ def get_family_counts(filters):
     target_degrees = filters.get('degree', '1')
     RETURN_BLOCK = """
         RETURN
-            person.first_name,
-            person.father_name,
-            person.grand_name,
-            person.family_name,
-            person.national_no,
-            person.phone_number,
-            person.principal_coordinator,
-            person.sub_coordinator,
-            person.primary_key,
+            person.first_name + ' ' + person.father_name + ' ' + person.grand_name + ' ' + person.family_name as full_name,
+            // person.first_name as first_name,
+            // person.father_name as father_name,
+            // person.grand_name as grand_name,
+            // person.family_name as family_name,
+            person.national_no as national_no,
+            person.phone_number as phone_number,
+            person.principal_coordinator as principal_coordinator,
+            person.sub_coordinator as sub_coordinator,
+            person.primary_key as primary_key,
             COUNT(DISTINCT relative) AS num_relatives
         ORDER BY num_relatives DESC
-        LIMIT 10;
-    """
-    BOX_QUERY = """
-
+        LIMIT 100;
     """
     # box search
     if filters.get('box') is not None:
@@ -161,7 +159,7 @@ def get_family_counts(filters):
     print('execuitng query ... ')
     data = run_query(q)
 
-    return pd.DataFrame(data)
+    return q, pd.DataFrame(data)
 # --------------------------------------------------------------------------------------------------
 
 
