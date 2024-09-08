@@ -309,7 +309,8 @@ def create_relationships(n4j__uri: str, n4j__user: str, n4j__password: str):
                 "MATCH (child:Person) WHERE child.mother_national_no <> 'missing' RETURN child",
                 "OPTIONAL MATCH (mother:Person {national_no: child.mother_national_no})  WHERE mother IS NOT NULL  WITH mother, child WHERE mother IS NOT NULL CREATE (mother)-[:MOTHER]->(child)",                 
                 {batchSize:50000, parallel:false}                 
-            ) YIELD batches, total, errorMessages RETURN batches, total, errorMessages;""" 
+            )
+            """ 
         )
 
         _res = result.single()
@@ -328,7 +329,7 @@ def create_relationships(n4j__uri: str, n4j__user: str, n4j__password: str):
                 "MATCH (father:Person)-[:FATHER]->(child:Person)<-[:MOTHER]-(mother:Person) WHERE NOT (father)-[:SPOUSE]-(mother) RETURN father, mother",
                 "MATCH (father), (mother) MERGE (father)-[:SPOUSE]->(mother)",
                 {batchSize: 50000, parallel: false}
-            ) YIELD batches, total, errorMessages RETURN batches, total, errorMessages;
+            )
             """
         )
 
@@ -347,7 +348,7 @@ def create_relationships(n4j__uri: str, n4j__user: str, n4j__password: str):
                 "MATCH (p1:Person)<-[:FATHER]-(father:Person)-[:FATHER]->(p2:Person) WHERE id(p1) > id(p2) RETURN DISTINCT p1, p2",
                 "MATCH (p1), (p2) MERGE (p1)-[:SIBLING]->(p2)",
                 {batchSize: 50000, parallel: false}
-            ) YIELD batches, total, errorMessages RETURN batches, total, errorMessages;
+            )
             """
         )
 
@@ -366,7 +367,8 @@ def create_relationships(n4j__uri: str, n4j__user: str, n4j__password: str):
                 "MATCH (p:Person) WHERE p.box <> 'missing' RETURN p",
                 "OPTIONAL MATCH (b:Box {name: p.box, center: p.center, circle: p.circle})  WHERE b IS NOT NULL  WITH b, p WHERE b IS NOT NULL MERGE (p)-[:VOTES_AT]->(b)",                 
                 {batchSize:50000, parallel:false}
-            )""" 
+            )
+            """ 
         )
 
         _res = result.single()
