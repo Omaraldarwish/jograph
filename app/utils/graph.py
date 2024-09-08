@@ -56,7 +56,7 @@ def get_boxes(circle_id, center_id):
 
 # --------------------------------------------------------------------------------------------------
 
-def get_circle_center_box_voter_counts(filters):
+def get_counts(filters):
     
     target_box = filters.get('box')
     target_center = filters.get('center')
