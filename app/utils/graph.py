@@ -20,6 +20,9 @@ def get_driver():
     return neo4j.GraphDatabase.driver(uri, auth=(user, password))
 
 def run_query(query, **kwargs):
+    print('-'*50)
+    print(query)
+    print('-'*50)
     with get_driver().session() as session: #type: ignore
         return session.run(query, **kwargs).data() 
 
