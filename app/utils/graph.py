@@ -200,7 +200,7 @@ def get_person_influence(filters):
     return G
 
 def run_clef(filters):
-    
+    NODE_PROPS = ['full_name', 'national_no', 'phone_number', 'principal_coordinator', 'sub_coordinator', 'primary_key']
     target_box = filters.get('box')
     target_center = filters.get('center')
     target_circle = filters.get('circle')
@@ -210,7 +210,7 @@ def run_clef(filters):
     target_set_size = filters.get('seedSetSize', 10)
     target_monte_carlo = filters.get('monteCarloSimulations', 1000)
     target_probability = filters.get('probability', 0.1)
-    
+    target_node_props = "[" + ", ".join([f"'{x}'" for x in NODE_PROPS]) + "]"
 
     if target_box:
         MATCH_BLOCK = f"""
@@ -239,7 +239,7 @@ def run_clef(filters):
     
     build_q = f"""
         {MATCH_BLOCK}
-        RETURN gds.graph.project('{_projection_name}', person, relative)
+        RETURN gds.graph.project('{_projection_name}', person, relative, {{nodeProperties: {target_node_props}}})
     """
     
     G, res = gds.graph.cypher.project(build_q)
@@ -261,7 +261,7 @@ def run_clef(filters):
         clef_result
         .assign(
             **{k:lambda x: x['nodeId'].apply(lambda y: gds.util.nodeProperty(G, y, k))
-               for k in ['full_name', 'national_no', 'phone_number', 'principal_coordinator', 'sub_coordinator', 'primary_key']
+               for k in NODE_PROPS
                }
         )
     )
