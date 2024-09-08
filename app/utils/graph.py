@@ -12,6 +12,7 @@ DB_DIR = os.path.join(os.path.dirname(__file__), 'db')
 # --------------------------------------------------------------------------------------------------
 # --------------------------------------------------------------------------------------------------
 
+@st.cache_resource
 def get_driver():
     load_dotenv()
     uri = os.getenv('NEO4J__URI')
@@ -218,38 +219,39 @@ def run_clef(filters):
         """
     
     
-    
-    # create graph projection
-    _projection_name = str(uuid4())
-    build_q = f"""
-        {MATCH_BLOCK}
-        RETURN gds.graph.project('{_projection_name}', person, relative)
-    """
-    res = run_query(build_q)
-    if res:
-        for k, v in res[0].items():
-            print(k, v)
-    
-    # run CLEF
-    run_q = f"""
-        CALL gds.influenceMaximization.celf.stream(
-        '{_projection_name}',
-        {{
-            seedSetSize: {target_set_size},
-            monteCarloSimulations:{target_monte_carlo},
-            propagationProbability: {target_probability}
-        }}
-        )
-    """
-    ranks = run_query(run_q)
+    with get_driver().session() as session: #type: ignore
+        # create graph projection
+        _projection_name = str(uuid4())
+        build_q = f"""
+            {MATCH_BLOCK}
+            RETURN gds.graph.project('{_projection_name}', person, relative)
+        """
+        res = session.run(build_q)
+        if res:
+            for k, v in res.data[0].items(): # type: ignore
+                print(k, v)
+        
+        # run CLEF
+        run_q = f"""
+            CALL gds.influenceMaximization.celf.stream(
+            '{_projection_name}',
+            {{
+                seedSetSize: {target_set_size},
+                monteCarloSimulations:{target_monte_carlo},
+                propagationProbability: {target_probability}
+            }}
+            )
+        """
+        try:
+            res = session.run(run_q).data()
+            out_df = pd.DataFrame(res.data()) # type: ignore
+        except Exception as e:
+            # delete graph projection
+            del_q = f"CALL gds.graph.drop('{_projection_name}')"
+            _ = run_query(del_q)
+            
+            print(e)
+            out_df = pd.DataFrame()
 
-    # delete graph projection
-    del_q = f"""
-        CALL gds.graph.drop('{_projection_name}')
-    """
-
-    _ = run_query(del_q)
-
-    # return results
-    return ("-"*80).join([build_q, run_q]), pd.DataFrame(ranks)
+    return ("-"*80).join([build_q, run_q]), out_df
 # --------------------------------------------------------------------------------------------------
