@@ -231,7 +231,7 @@ def run_clef(filters):
     
     # run CLEF
     run_q = f"""
-        gds.influenceMaximization.celf.stream(
+        CALL gds.influenceMaximization.celf.stream(
         '{_projection_name}',
         {{
             seedSetSize: {target_set_size},

@@ -56,8 +56,6 @@ query_filters = {
         'monteCarloSimulations': selected_monteCarloSimulations
     }
 
-data = run_clef(query_filters)
-
 with st.sidebar:
     search_trigger = False    
     if st.button('Search'):
