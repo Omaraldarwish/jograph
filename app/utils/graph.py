@@ -209,7 +209,6 @@ def run_clef(filters):
     target_set_size = filters.get('seedSetSize', 10)
     target_monte_carlo = filters.get('monteCarloSimulations', 1000)
     target_probability = filters.get('probability', 0.1)
-    target_node_props = "[" + ", ".join([f"'{x}'" for x in NODE_PROPS]) + "]"
 
     if target_box:
         MATCH_BLOCK = f"""

@@ -1,7 +1,7 @@
 import select
 import streamlit as st
 
-from utils.graph import get_circles, get_centers, get_boxes, run_clef
+from utils.graph import get_circles, get_centers, get_boxes, run_clef, get_counts_by_location
 
 st.set_page_config(layout="wide")
 st.title('Elections Graph Search | Relative Rank')
@@ -55,6 +55,13 @@ query_filters = {
         'seedSetSize': selected_seedSetSize,
         'monteCarloSimulations': selected_monteCarloSimulations
     }
+
+counts = get_counts_by_location(query_filters)
+
+col1, col2, col3 = st.columns([1, 1, 1])
+col1.metric(label='Total Centers', value=counts['num_centers'])
+col2.metric(label='Total Boxes', value=counts['num_boxes'])
+col3.metric(label='Total Voters', value=f"{counts['num_voters']:000,}")
 
 with st.sidebar:
     search_trigger = False    
