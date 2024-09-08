@@ -123,6 +123,8 @@ def get_family_counts(filters):
             person.family_name,
             person.national_no,
             person.phone_number,
+            person.principal_coordinator,
+            person.sub_coordinator,
             person.primary_key,
             COUNT(DISTINCT relative) AS num_relatives
         ORDER BY num_relatives DESC
