@@ -6,7 +6,8 @@ import time
 
 def restart_neo4j():
     print("Restarting Neo4j ...")
-    command = ['sudo', 'neo4j', 'restart']
+    # command = ['sudo', 'neo4j', 'restart']
+    command = ['sudo', 'systemctl', 'restart', 'neo4j.service']
     subprocess.run(command, check=True)
     time.sleep(10)
 
@@ -375,7 +376,6 @@ def load_from_raw(
     restart_neo4j()
     
 if __name__ == '__main__':
-    # named sys.argv
     raw_df_path = sys.argv[1]
     campaign_df_path = sys.argv[2]
     n4j__uri = sys.argv[3]
@@ -392,13 +392,13 @@ if __name__ == '__main__':
 
     init_constraints(n4j__uri, n4j__user, n4j__password)
 
-    # load_from_raw(
-    #     raw_df_path,
-    #     n4j__uri,
-    #     n4j__user,
-    #     n4j__password,
-    #     csv_chunk_size=100_000
-    # )
+    load_from_raw(
+        raw_df_path,
+        n4j__uri,
+        n4j__user,
+        n4j__password,
+        csv_chunk_size=100_000
+    )
 
     update_campaign_data(
         campaign_df_path,
