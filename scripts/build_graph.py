@@ -186,7 +186,7 @@ def load_from_raw(
                     new_big_key: row.new_big_key,
                     dob: row.dob,
                     age: row.age,
-                    religion: reow.religion,
+                    religion: row.religion,
                     address: row.address,
                     circle: row.circle,
                     center: row.center,
@@ -407,13 +407,13 @@ if __name__ == '__main__':
 
     init_constraints(n4j__uri, n4j__user, n4j__password)
 
-    # load_from_raw(
-    #     raw_df_path,
-    #     n4j__uri,
-    #     n4j__user,
-    #     n4j__password,
-    #     csv_chunk_size=100_000
-    # )
+    #load_from_raw(
+    #    raw_df_path,
+    #    n4j__uri,
+    #    n4j__user,
+    #    n4j__password,
+    #    csv_chunk_size=100_000
+    #)
 
     create_relationships(
         n4j__uri,
