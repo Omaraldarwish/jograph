@@ -256,5 +256,14 @@ def run_clef(filters):
         propagationProbability=target_probability
     )
     
+    # augment with node details
+    out = (
+        clef_result
+        .assign(
+            **{k:lambda x: x['node'].apply(lambda y: gds.util.nodeProperty(G, y['nodeId'], k))
+               for k in ['full_name', 'national_no', 'phone_number', 'principal_coordinator', 'sub_coordinator', 'primary_key']
+               }
+        )
+    )
     return clef_result
 # --------------------------------------------------------------------------------------------------
