@@ -237,9 +237,9 @@ def run_clef(filters):
         {MATCH_BLOCK}
         RETURN gds.graph.project('{_projection_name}', person, relative)
     """
-    gds.run_cypher(build_q)
-    G, result = gds.graph.project(_projection_name, 'Person', raw_relationships)
     
+    G, res = gds.graph.cypher.project(build_q)
+    print(res)
     print(f"Graph '{G.name()}' node count: {G.node_count()}")
     print(f"Graph '{G.name()}' node labels: {G.node_labels()}")
     print(f"Graph '{G.name()}' relationship count: {G.relationship_count()}")
