@@ -1,7 +1,8 @@
 import os
-
+from uuid import uuid4
 from dotenv import load_dotenv
 import neo4j
+import networkx as nx
 import streamlit as st
 
 import pandas as pd
@@ -20,13 +21,10 @@ def get_driver():
     return neo4j.GraphDatabase.driver(uri, auth=(user, password))
 
 def run_query(query, **kwargs):
-    print('-'*50)
-    print(query)
-    print('-'*50)
     with get_driver().session() as session: #type: ignore
         return session.run(query, **kwargs).data() 
 
-
+# --------------------------------------------------------------------------------------------------
 @st.cache_data
 def get_circles():
     q = """
@@ -57,10 +55,7 @@ def get_boxes(circle_id, center_id):
 
     return run_query(q)
 
-# --------------------------------------------------------------------------------------------------
-
-def get_counts(filters):
-    
+def get_counts_by_location(filters):
     target_box = filters.get('box')
     target_center = filters.get('center')
     target_circle = filters.get('circle')
@@ -104,15 +99,30 @@ def get_counts(filters):
         'num_boxes': num_boxes,
         'num_voters': num_voters
     }
-    
 
-
-def get_relative_counts(filters):
-    
+def build_match_block_from_location(filters):
     target_box = filters.get('box')
     target_center = filters.get('center')
     target_circle = filters.get('circle')
 
+    if target_box:
+        return f"""
+            MATCH (person:Person)--(box:Box)
+            WHERE elementId(box) = '{target_box}'
+        """
+    elif target_center:
+        return f"""
+            MATCH (person:Person)--(box:Box)--(center:Center)
+            WHERE elementId(center) = '{target_center}'
+        """
+    else:
+        return f"""
+            MATCH (person:Person)--(box:Box)--(center:Center)--(circle:Circle)
+            WHERE elementId(circle) = '{target_circle}'
+        """
+
+
+def get_relative_counts(filters):
     target_relationships = f"({'|'.join(filters.get('relationship'))})"
     target_degrees = filters.get('degree', '1')
     RETURN_BLOCK = """
@@ -132,21 +142,7 @@ def get_relative_counts(filters):
         LIMIT 100;
     """
     # box search
-    if filters.get('box') is not None:
-        MATCH_BLOCK = f"""
-            MATCH (person:Person)-[:VOTES_AT]->(box:Box)
-            WHERE elementId(box) = '{target_box}'
-        """
-    elif filters.get('center') is not None:
-        MATCH_BLOCK = f"""
-            MATCH (person:Person)-[:VOTES_AT]->(box:Box)--(center:Center)
-            WHERE elementId(center) = '{target_center}'
-        """
-    else:
-        MATCH_BLOCK = f"""
-            MATCH (person:Person)-[:VOTES_AT]->(box:Box)--(center:Center)--(circle:Circle)
-            WHERE elementId(circle) = '{target_circle}'
-        """
+    MATCH_BLOCK = build_match_block_from_location(filters)
 
     q = f"""
         {MATCH_BLOCK}
@@ -160,162 +156,100 @@ def get_relative_counts(filters):
     data = run_query(q)
 
     return q, pd.DataFrame(data)
-# --------------------------------------------------------------------------------------------------
 
+def get_person_influence(filters):
+    target_national_no = filters.get('national_no')
+    target_relationships = f"({'|'.join(filters.get('relationship'))})"
+    target_degrees = filters.get('degree', '1')
 
-# Base = declarative_base()
+    q = f"""
+        MATCH (voter:Person {{national_no: '{target_national_no}'}}) -[:({target_relationships})*1..{target_degrees}]- (relatives)
+        MATCH (relatives) -[r1:VOTES_AT]-> (b1)
+        MATCH (voter) -[r2:VOTES_AT]-> (b2)
+        WITH voter, relatives, collect(distinct b1) + collect(distinct b2) AS b, r1, r2
+        UNWIND b AS singleb
+        OPTIONAL MATCH (ce) -[r3:HAS_BOX]-> (singleb)
+        UNWIND ce AS singlece
+        MATCH (c) -[r4:HAS_CENTER]-> (singlece)
+        RETURN voter, relatives, b, ce, c, r1, r2, r3, r4
+    """
 
-# class Circle(Base):
-#     __tablename__ = 'circles'
+    with get_driver().session() as session: #type: ignore
+        res = session.run(q)
     
-#     circle_id = Column(String, primary_key=True)
-#     circle_name = Column(String, unique=True)
+    # build graph
+    n4j_graph = res.graph()
 
-#     centers = relationship('Center', back_populates='circle')
+    G = nx.DiGraph()
+    for node in n4j_graph.nodes:
+        G.add_node(node.id, **node.properties)
+    
+    for edge in n4j_graph.relationships():
+        G.add_edge(edge.start_node.id, edge.end_node.id, **edge.properties)
+    
+    return G
 
-# class Center(Base):
-#     __tablename__ = 'centers'
+def run_clef(filters):
+    
+    target_box = filters.get('box')
+    target_center = filters.get('center')
+    target_circle = filters.get('circle')
 
-#     center_id = Column(String, primary_key=True)
-#     center_name = Column(String)
-#     circle_id = Column(String, ForeignKey('circles.circle_id'))
+    target_set_size = filters.get('seedSetSize', 10)
+    target_monte_carlo = filters.get('monteCarloSimulations', 1000)
+    target_probability = filters.get('probability', 0.1)
 
-#     circle = relationship('Circle', back_populates='centers')
-#     boxes = relationship('Box', back_populates='center')
 
-# class Box(Base):
-#     __tablename__ = 'boxes'
+    if target_box:
+        MATCH_BLOCK = f"""
+            MATCH (person:Person)--(box:Box), (person)--(relative:Person)-->(box:Box)
+            WHERE elementId(box) = '{target_box}'
+        """
+    elif target_center:
+        MATCH_BLOCK = f"""
+            MATCH (person:Person)--(box:Box)--(center:Center), (person)--(relative:Person)-->(box:Box)--(center:Center)
+            WHERE elementId(center) = '{target_center}'
+        """
+    else:
+        MATCH_BLOCK = f"""
+            MATCH (person:Person)--(box:Box)--(center:Center)--(circle:Circle), (person)--(relative:Person)-->(box:Box)--(center:Center)--(circle:Circle)
+            WHERE elementId(circle) = '{target_circle}'
+        """
+    
+    target_relationships = "[" + ",".join([f"'{x}'" for x in filters.get('relationship')]) + "]"
+    
+    # create graph projection
+    _projection_name = str(uuid4())
+    build_q = f"""
+        {MATCH_BLOCK}
+        RETURN gds.graph.project('{_projection_name}', person, relative)
+    """
+    res = run_query(build_q)
+    if res:
+        for k, v in res[0].items():
+            print(k, v)
+    
+    # run CLEF
+    run_q = f"""
+        gds.influenceMaximization.celf.stream(
+        '{_projection_name}',
+        {{
+            seedSetSize: {target_set_size},
+            monteCarloSimulations:{target_monte_carlo},
+            propagationProbability: {target_probability},
+            relationshipTypes: {target_relationships}
+        }}
+        )
+    """
+    ranks = run_query(run_q)
 
-#     box_id = Column(String, primary_key=True)
-#     box_name = Column(String)
-#     center_id = Column(String, ForeignKey('centers.center_id'))
+    # delete graph projection
+    del_q = f"""
+        CALL gds.graph.drop('{_projection_name}')
+    """
 
-#     center = relationship('Center', back_populates='boxes')
+    _ = run_query(del_q)
 
-# class BoxesTable:
-#     def __init__(self, db_name='boxes.db', db_path='path_to_db', force_init=False):
-#         if not os.path.exists(db_path):
-#             os.makedirs(db_path)
-
-#         self.engine = create_engine(f'sqlite:///{os.path.join(db_path, db_name)}')
-#         Base.metadata.bind = self.engine
-#         self.Session = sessionmaker(bind=self.engine)
-
-#         if force_init or not self.is_initialized():
-#             self.delete_tables()
-#             self.create_tables()
-#             self.init_data()
-
-#     def is_initialized(self):
-#         """Check if tables exist and have consistent counts of rows."""
-#         session = self.Session()
-#         inspector = inspect(self.engine)
-
-#         if not inspector.has_table('circles') or not inspector.has_table('centers') or not inspector.has_table('boxes'):
-#             return False
-        
-#         circle_count = session.query(Circle).count()
-#         center_count = session.query(Center).count()
-#         box_count = session.query(Box).count()
-
-#         neo4j_counts = self.fetch_init_counts()
-
-#         # Compare the counts
-#         if (circle_count != neo4j_counts[0]['circle_count'] or
-#             center_count != neo4j_counts[0]['center_count'] or
-#             box_count != neo4j_counts[0]['box_count']):
-#             session.close()
-#             return False
-
-#         session.close()
-#         return True
-
-#     def delete_tables(self):
-#         """Drop tables."""
-#         Base.metadata.drop_all(self.engine)
-
-#     def create_tables(self):
-#         """Create tables."""
-#         Base.metadata.create_all(self.engine)
-
-#     def fetch_init_counts(self):
-#         q = """
-#         MATCH (b:Box)MATCH (c:Circle)--(ce:Center)--(b:Box)
-#         return
-#             count(distinct c) as circle_count,
-#             count(distinct ce) as center_count,
-#             count(distinct b) as box_count
-#         """
-
-#         return run_query(q)
-
-#     def init_data(self):
-#         """Insert initial data into the tables."""
-#         data = self.fetch_init_data()
-
-#         session = self.Session()
-
-#         _circle_ids = set()
-#         _center_ids = set()
-#         for entry in data:
-#             # Insert data into Circle, Center, and Box
-#             circle = Circle(circle_id=entry['circle_id'], circle_name=entry['circle_name'])
-#             if circle.circle_id not in _circle_ids:
-#                 _circle_ids.add(circle.circle_id)
-#                 session.add(circle)
-            
-#             center = Center(center_id=entry['center_id'], center_name=entry['center_name'], circle_id=entry['circle_id'])
-#             if center.center_id not in _center_ids:
-#                 _center_ids.add(center.center_id)
-#                 session.add(center)
-                
-#             box = Box(box_id=entry['box_id'], box_name=entry['box_name'], center_id=entry['center_id'])
-#             session.add(box)
-
-#         session.commit()
-#         session.close()
-
-#     def get_unique_circles(self):
-#         """Return unique circle names."""
-#         session = self.Session()
-#         circles = session.query(Circle.circle_name, Circle.circle_id).distinct().all()
-#         session.close()
-#         return circles
-
-#     def get_unique_centers(self):
-#         """Return unique center names."""
-#         session = self.Session()
-#         centers = session.query(Center.center_name, Center.center_id).distinct().all()
-#         session.close()
-#         return centers
-
-#     def get_unique_boxes(self):
-#         """Return unique box names."""
-#         session = self.Session()
-#         boxes = session.query(Box.box_name, Box.box_id).distinct().all()
-#         session.close()
-#         return boxes
-
-#     def get_centers_for_circle(self, circle_name):
-#         """Return center names for a given circle name."""
-#         session = self.Session()
-#         centers = session.query(Center.center_name, Center.center_id).join(Circle).filter(Circle.circle_name == circle_name).all()
-#         session.close()
-#         return centers
-
-#     def get_boxes_for_circle_and_center(self, circle_name, center_name):
-#         """Return box names for a given circle name and center name."""
-#         session = self.Session()
-#         boxes = (
-#             session.query(Box.box_name, Box.box_id)
-#             .join(Center)
-#             .join(Circle)
-#             .filter(Circle.circle_name == circle_name, Center.center_name == center_name)
-#             .all()
-#         )
-#         session.close()
-#         return boxes
-
-#     def close(self):
-#         """Close the database session."""
-#         self.Session.close_all()
+    # return results
+    return ("-"*80).join([build_q, run_q]), pd.DataFrame(ranks)
+# --------------------------------------------------------------------------------------------------

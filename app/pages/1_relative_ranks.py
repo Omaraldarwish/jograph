@@ -1,12 +1,9 @@
-from multiprocessing.managers import ValueProxy
-from turtle import circle
-from polars import col
 import streamlit as st
 
-from utils.graph import get_circles, get_centers, get_boxes, get_relative_counts, get_counts
+from utils.graph import get_circles, get_centers, get_boxes, get_relative_counts, get_counts_by_location
 
 st.set_page_config(layout="wide")
-st.title('Elections Graph Search')
+st.title('Elections Graph Search | Relative Rank')
 st.markdown("<hr>", unsafe_allow_html=True)
 
 with st.sidebar:    
@@ -52,7 +49,7 @@ query_filters = {
         'degree': selected_degree
     }
 
-counts = get_counts(query_filters)
+counts = get_counts_by_location(query_filters)
 
 col1, col2, col3 = st.columns([1, 1, 1])
 col1.metric(label='Total Centers', value=counts['num_centers'])
