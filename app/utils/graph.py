@@ -194,29 +194,30 @@ def run_clef(filters):
     target_box = filters.get('box')
     target_center = filters.get('center')
     target_circle = filters.get('circle')
+    target_relationships = f"({'|'.join(filters.get('relationship'))})"
 
     target_set_size = filters.get('seedSetSize', 10)
     target_monte_carlo = filters.get('monteCarloSimulations', 1000)
     target_probability = filters.get('probability', 0.1)
-
+    
 
     if target_box:
         MATCH_BLOCK = f"""
-            MATCH (person:Person)--(box:Box), (person)--(relative:Person)-->(box:Box)
+            MATCH (person:Person)--(box:Box), (person)-[:{target_relationships}]-(relative:Person)-->(box:Box)
             WHERE elementId(box) = '{target_box}'
         """
     elif target_center:
         MATCH_BLOCK = f"""
-            MATCH (person:Person)--(box:Box)--(center:Center), (person)--(relative:Person)-->(box:Box)--(center:Center)
+            MATCH (person:Person)--(box:Box)--(center:Center), (person)-[:{target_relationships}]-(relative:Person)-->(box:Box)--(center:Center)
             WHERE elementId(center) = '{target_center}'
         """
     else:
         MATCH_BLOCK = f"""
-            MATCH (person:Person)--(box:Box)--(center:Center)--(circle:Circle), (person)--(relative:Person)-->(box:Box)--(center:Center)--(circle:Circle)
+            MATCH (person:Person)--(box:Box)--(center:Center)--(circle:Circle), (person)-[:{target_relationships}]-(relative:Person)-->(box:Box)--(center:Center)--(circle:Circle)
             WHERE elementId(circle) = '{target_circle}'
         """
     
-    target_relationships = "[" + ",".join([f"'{x}'" for x in filters.get('relationship')]) + "]"
+    
     
     # create graph projection
     _projection_name = str(uuid4())
@@ -236,8 +237,7 @@ def run_clef(filters):
         {{
             seedSetSize: {target_set_size},
             monteCarloSimulations:{target_monte_carlo},
-            propagationProbability: {target_probability},
-            relationshipTypes: {target_relationships}
+            propagationProbability: {target_probability}
         }}
         )
     """
