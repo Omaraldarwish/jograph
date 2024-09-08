@@ -28,7 +28,7 @@ def get_gds():
     user = os.getenv('NEO4J__USER')
     password = os.getenv('NEO4J__PASSWORD')
 
-    return GraphDataScience(uri, user, password)
+    return GraphDataScience(uri, auth=(user, password))
 
 def run_query(query, **kwargs):
     with get_driver().session() as session: #type: ignore
@@ -238,7 +238,7 @@ def run_clef(filters):
         RETURN gds.graph.project('{_projection_name}', person, relative)
     """
     gds.run_cypher(build_q)
-    G, result = gds.graph.project(_projection_name, 'person', raw_relationships)
+    G, result = gds.graph.project(_projection_name, 'Person', raw_relationships)
     
     print(f"Graph '{G.name()}' node count: {G.node_count()}")
     print(f"Graph '{G.name()}' node labels: {G.node_labels()}")
