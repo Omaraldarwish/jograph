@@ -261,5 +261,5 @@ def run_clef(filters):
         out.append(gds.util.asNode(tup.nodeId)._properties | {'score': tup.spread})
     
     out = pd.DataFrame(out)[_props].sort_values('score', ascending=False)
-    return clef_result
+    return out
 # --------------------------------------------------------------------------------------------------
