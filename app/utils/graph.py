@@ -2,6 +2,7 @@ import os
 from uuid import uuid4
 from dotenv import load_dotenv
 import neo4j
+from graphdatascience import GraphDataScience
 import networkx as nx
 import streamlit as st
 
@@ -20,6 +21,14 @@ def get_driver():
     password = os.getenv('NEO4J__PASSWORD')
 
     return neo4j.GraphDatabase.driver(uri, auth=(user, password))
+
+def get_gds():
+    load_dotenv()
+    uri = os.getenv('NEO4J__URI')
+    user = os.getenv('NEO4J__USER')
+    password = os.getenv('NEO4J__PASSWORD')
+
+    return GraphDataScience(uri, user, password)
 
 def run_query(query, **kwargs):
     with get_driver().session() as session: #type: ignore
@@ -195,6 +204,7 @@ def run_clef(filters):
     target_box = filters.get('box')
     target_center = filters.get('center')
     target_circle = filters.get('circle')
+    raw_relationships = filters.get('relationship')
     target_relationships = f"({'|'.join(filters.get('relationship'))})"
 
     target_set_size = filters.get('seedSetSize', 10)
@@ -219,39 +229,28 @@ def run_clef(filters):
         """
     
     
-    with get_driver().session() as session: #type: ignore
-        # create graph projection
-        _projection_name = str(uuid4())
-        build_q = f"""
-            {MATCH_BLOCK}
-            RETURN gds.graph.project('{_projection_name}', person, relative)
-        """
-        res = session.run(build_q)
-        if res:
-            for k, v in res.data[0].items(): # type: ignore
-                print(k, v)
-        
-        # run CLEF
-        run_q = f"""
-            CALL gds.influenceMaximization.celf.stream(
-            '{_projection_name}',
-            {{
-                seedSetSize: {target_set_size},
-                monteCarloSimulations:{target_monte_carlo},
-                propagationProbability: {target_probability}
-            }}
-            )
-        """
-        try:
-            res = session.run(run_q).data()
-            out_df = pd.DataFrame(res.data()) # type: ignore
-        except Exception as e:
-            # delete graph projection
-            del_q = f"CALL gds.graph.drop('{_projection_name}')"
-            _ = run_query(del_q)
-            
-            print(e)
-            out_df = pd.DataFrame()
+    gds = get_gds()
+    
+    # build graph projection
+    _projection_name = str(uuid4())
+    build_q = f"""
+        {MATCH_BLOCK}
+        RETURN gds.graph.project('{_projection_name}', person, relative)
+    """
+    gds.run_cypher(build_q)
+    G, result = gds.graph.project(_projection_name, 'person', raw_relationships)
+    
+    print(f"Graph '{G.name()}' node count: {G.node_count()}")
+    print(f"Graph '{G.name()}' node labels: {G.node_labels()}")
+    print(f"Graph '{G.name()}' relationship count: {G.relationship_count()}")
 
-    return ("-"*80).join([build_q, run_q]), out_df
+    # run clef
+    clef_result = gds.beta.influenceMaximization.celf.stream(
+        G=G,
+        seedSetSize=target_set_size,
+        monteCarloSimulations=target_monte_carlo,
+        propagationProbability=target_probability
+    )
+    
+    return clef_result
 # --------------------------------------------------------------------------------------------------

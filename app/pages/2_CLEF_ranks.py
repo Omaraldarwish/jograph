@@ -61,7 +61,7 @@ with st.sidebar:
     if st.button('Search'):
         search_trigger = True
         with st.spinner('Searching...'):
-            q, data = run_clef(query_filters)    
+            data = run_clef(query_filters)    
     
 if search_trigger:
     st.write(data)
@@ -74,6 +74,5 @@ if search_trigger:
         st.write(
             {
                 'query_filters': query_filters,
-                'query_string': "\n".join([l.strip() for l in q.splitlines()]),
             }
         )
