@@ -9,7 +9,7 @@ def restart_neo4j():
     # command = ['sudo', 'neo4j', 'restart']
     command = ['sudo', 'systemctl', 'restart', 'neo4j.service']
     subprocess.run(command, check=True)
-    time.sleep(10)
+    time.sleep(30)
 
 def init_constraints(n4j__uri: str, n4j__user: str, n4j__password: str):
     driver = GraphDatabase.driver(n4j__uri, auth=(n4j__user, n4j__password))
@@ -121,7 +121,7 @@ def load_from_raw(
         len(df) + len(missing_fathers_df) + len(missing_mothers_df)
         + df_cirlce_center_box.select(['circle']).n_unique()
         + df_cirlce_center_box.select(['center', 'circle']).n_unique()
-        + df_cirlce_center_box.select(['box', 'center', 'circle']).unique()
+        + df_cirlce_center_box.select(['box', 'center', 'circle']).n_unique()
     )
 
     print(f"=*"*50)
