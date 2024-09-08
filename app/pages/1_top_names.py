@@ -65,4 +65,7 @@ with st.sidebar:
         with st.spinner('Searching...'):
             data = get_family_counts(query_filters)    
 
-st.dataframe(get_family_counts(query_filters))
+        st.dataframe(data)
+    
+    else:
+        st.write('Change the filters and click Search to see the results.')
