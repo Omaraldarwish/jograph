@@ -237,7 +237,7 @@ def run_clef(filters):
     
     build_q = f"""
         {MATCH_BLOCK}
-        RETURN gds.graph.project('{_projection_name}', person, relative, {{nodeProperties: {target_node_props}}})
+        RETURN gds.graph.project('{_projection_name}', person, relative)
     """
     
     G, res = gds.graph.cypher.project(build_q)
