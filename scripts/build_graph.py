@@ -275,6 +275,7 @@ def load_from_raw(
         result = session.run("CREATE INDEX person__is_missing_index IF NOT EXISTS FOR (n:Person) ON (n.is_missing)")
     # ----------------------------------------------------------------------------------------------
 
+def create_relationships(n4j__uri: str, n4j__user: str, n4j__password: str):
     # create relationships
     # ----------------------------------------------------------------------------------------------
 
@@ -392,12 +393,18 @@ if __name__ == '__main__':
 
     init_constraints(n4j__uri, n4j__user, n4j__password)
 
-    load_from_raw(
-        raw_df_path,
+    # load_from_raw(
+    #     raw_df_path,
+    #     n4j__uri,
+    #     n4j__user,
+    #     n4j__password,
+    #     csv_chunk_size=100_000
+    # )
+
+    create_relationships(
         n4j__uri,
         n4j__user,
         n4j__password,
-        csv_chunk_size=100_000
     )
 
     update_campaign_data(
