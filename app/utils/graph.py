@@ -152,7 +152,6 @@ def get_family_counts(filters):
         {MATCH_BLOCK}
         WITH person, box
         // Traverse family relations up to n degrees and check if they vote at the same box
-        UNWIND box as b
         MATCH (person)-[:{target_relationships}*1..{target_degrees}]->(relative:Person)-[:VOTES_AT]->(b)
         WITH person, relative
         {RETURN_BLOCK}
