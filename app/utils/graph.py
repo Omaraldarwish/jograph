@@ -117,17 +117,17 @@ def build_match_block_from_location(filters):
 
     if target_box:
         return f"""
-            MATCH (person:Person)--(box:Box)
+            MATCH (box:Box)
             WHERE elementId(box) = '{target_box}'
         """
     elif target_center:
         return f"""
-            MATCH (person:Person)--(box:Box)--(center:Center)
+            MATCH (box:Box)--(center:Center)
             WHERE elementId(center) = '{target_center}'
         """
     else:
         return f"""
-            MATCH (person:Person)--(box:Box)--(center:Center)--(circle:Circle)
+            MATCH (box:Box)--(center:Center)--(circle:Circle)
             WHERE elementId(circle) = '{target_circle}'
         """
 
@@ -156,7 +156,7 @@ def get_relative_counts(filters):
 
     q = f"""
         {MATCH_BLOCK}
-        WITH person, box
+        WITH box
         // Traverse family relations up to n degrees and check if they vote at the same box
         MATCH (person)-[:{target_relationships}*1..{target_degrees}]->(relative:Person)-[:VOTES_AT]->(b)
         WITH person, relative
@@ -209,24 +209,23 @@ def run_clef(filters):
     target_set_size = filters.get('seedSetSize', 10)
     target_monte_carlo = filters.get('monteCarloSimulations', 1000)
     target_probability = filters.get('probability', 0.1)
+    target_degrees = filters.get('degree', '1')
 
     if target_box:
         MATCH_BLOCK = f"""
-            MATCH (person:Person)--(box:Box)
+            MATCH (person)-[:{target_relationships}*1..{target_degrees}]-(relative:Person)-->(box:Box)
             WHERE elementId(box) = '{target_box}'
-            MATCH (person)-[:{target_relationships}]-(relative:Person)-->(box:Box)
+            
         """
     elif target_center:
         MATCH_BLOCK = f"""
-            MATCH (person:Person)--(box:Box)--(center:Center)
+            MATCH (person)-[:{target_relationships}*1..{target_degrees}]-(relative:Person)-->(box:Box)--(center:Center)
             WHERE elementId(center) = '{target_center}'
-            MATCH (person)-[:{target_relationships}]-(relative:Person)-->(box:Box)--(center:Center)
         """
     else:
         MATCH_BLOCK = f"""
-            MATCH (person:Person)--(box:Box)--(center:Center)--(circle:Circle)
+            MATCH (person)-[:{target_relationships}*1..{target_degrees}]-(relative:Person)-->(box:Box)--(center:Center)--(circle:Circle)
             WHERE elementId(circle) = '{target_circle}'
-            MATCH (person)-[:{target_relationships}]-(relative:Person)-->(box:Box)--(center:Center)--(circle:Circle)
         """
     
     
