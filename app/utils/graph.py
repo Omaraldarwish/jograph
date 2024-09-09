@@ -183,16 +183,36 @@ def get_person_influence(filters):
 
     with get_driver().session() as session: #type: ignore
         res = session.run(q)
+        neo4j_graph = res.graph()
     
-    # build graph
-    n4j_graph = res.graph()
+    _nodes = []
+    for node in neo4j_graph.nodes:
+        _n = dict(node)
+        _n['id'] = node.id
+        _label = list(node.labels)[0]
+        _n['label'] = _label
+
+        if _label == 'Person':
+            _n['color'] = 'aliceblue'
+            _n['display'] = _n["first_name"]
+        elif _label == 'Box':
+            _n['color'] = 'darkred'
+            _n['display'] = _n["name"]
+        elif _label == 'Center':
+            _n['color'] = 'forestgreen'
+            _n['display'] = _n["name"]
+        else:
+            _n['color'] = 'darkturquoise'
+            _n['display'] = _n["name"]
+        
+        _nodes.append(_n)
+    
+    _edges = [(e.start_node.id, e.end_node.id, e.type) for e in neo4j_graph.relationships]
 
     G = nx.DiGraph()
-    for node in n4j_graph.nodes:
-        G.add_node(node.id, **node.properties)
-    
-    for edge in n4j_graph.relationships():
-        G.add_edge(edge.start_node.id, edge.end_node.id, **edge.properties)
+    G.add_nodes_from([(node['id'], node) for node in _nodes])
+    for edge in _edges:
+        G.add_edge(edge[0], edge[1], type=edge[2])
     
     return G
 
