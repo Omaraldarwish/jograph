@@ -4,11 +4,14 @@ from dotenv import load_dotenv
 import neo4j
 from graphdatascience import GraphDataScience
 import networkx as nx
+from prompt_toolkit import HTML
 import streamlit as st
+from pyvis.network import Network
 
 import pandas as pd
 
 DB_DIR = os.path.join(os.path.dirname(__file__), 'db')
+HTML_DIR = os.path.join('html')
 
 # --------------------------------------------------------------------------------------------------
 # --------------------------------------------------------------------------------------------------
@@ -165,6 +168,35 @@ def get_relative_counts(filters):
 
     return q, pd.DataFrame(data)
 
+def build_graph_from_query(query):
+    with get_driver().session() as session:
+        res = session.run(query)
+        n4j_graph = res.graph()
+
+    _nodes = []
+    for node in n4j_graph.nodes:
+        _n = dict(node)
+        _n['label'] = _n['national_no']
+        _n['title'] = _n.get('full_name', 'Unknown')
+        _n['id'] = node.id
+        
+        _nodes.append(_n)
+    
+    _edges = [(e.start_node.id, e.end_node.id, e.type) for e in n4j_graph.relationships]
+    
+    graph = nx.DiGraph()
+    graph.add_nodes_from([(node['id'], node) for node in _nodes])
+    for edge in _edges:
+        graph.add_edge(edge[0], edge[1], type=edge[2])
+    
+    return graph
+
+def graph_vis(graph):
+    nt = Network('1000px', '1000px')
+    nt.from_nx(graph)
+
+    return nt.generate_html('graph.html')
+
 def get_person_influence(filters):
     target_national_no = filters.get('national_no')
     target_relationships = f"({'|'.join(filters.get('relationship'))})"
@@ -201,7 +233,18 @@ def get_person_influence(filters):
         df2 = pd.DataFrame()
         df1 = pd.DataFrame()
     
-    return df1, df2
+    q = f"""
+        MATCH (voter:Person {{national_no: '{target_national_no}'}}) -[x:({target_relationships})*1..{target_degrees}]- (relatives: Person)
+        OPTIONAL MATCH (relatives) -[r1:VOTES_AT]-> (b1)
+        OPTIONAL  MATCH (voter) -[r2:VOTES_AT]-> (b2)
+        return voter, relatives, x
+    """
+
+    G = build_graph_from_query(q)
+
+    return df1, df2, G
+
+
 
 def run_clef(filters):
     target_box = filters.get('box')

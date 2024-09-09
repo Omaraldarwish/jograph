@@ -1,10 +1,11 @@
 import networkx as nx
 import streamlit as st
+import streamlit.components.v1 as components
 
 import plotly.express as px
 import plotly.graph_objects as go
 
-from utils.graph import get_person_influence
+from utils.graph import get_person_influence, graph_vis
 
 st.set_page_config(layout="wide")
 st.title('Elections Graph Search | Simple Relative Search')
@@ -30,7 +31,7 @@ query_filters = {
         'degree': selected_degree
     }
 
-data, data2 = get_person_influence(query_filters)
+data, data2, G = get_person_influence(query_filters)
 
 col1, col2, col3 = st.columns([1, 1, 1])
 col1.metric(label='Total Relatives', value=data['num_relatives'].sum())
@@ -55,6 +56,12 @@ st.dataframe(data, use_container_width=True)
 st.markdown("<hr>", unsafe_allow_html=True)
 st.write('Drill Down')
 st.dataframe(data2, use_container_width=True)
+st.markdown("<hr>", unsafe_allow_html=True)
+
+# --------------------------------------------------------------------------------------------------
+g_html = graph_vis(G)
+components.html(g_html, height = 1000, width=1000)
+
 # --------------------------------------------------------------------------------------------------
 # pos = nx.multipartite_layout(graph, subset_key='pos_label', align='horizontal', scale=2)
 # edge_x = []
@@ -122,6 +129,3 @@ st.dataframe(data2, use_container_width=True)
 #                 )
 
 # st.plotly_chart(fig, use_container_width=True)
-
-
-# --------------------------------------------------------------------------------------------------
