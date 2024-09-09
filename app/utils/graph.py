@@ -110,28 +110,6 @@ def get_counts_by_location(filters):
         'num_voters': num_voters
     }
 
-def build_match_block_from_location(filters):
-    target_box = filters.get('box')
-    target_center = filters.get('center')
-    target_circle = filters.get('circle')
-
-    if target_box:
-        return f"""
-            MATCH (box:Box)
-            WHERE elementId(box) = '{target_box}'
-        """
-    elif target_center:
-        return f"""
-            MATCH (box:Box)--(center:Center)
-            WHERE elementId(center) = '{target_center}'
-        """
-    else:
-        return f"""
-            MATCH (box:Box)--(center:Center)--(circle:Circle)
-            WHERE elementId(circle) = '{target_circle}'
-        """
-
-
 def get_relative_counts(filters):
     target_relationships = f"({'|'.join(filters.get('relationship'))})"
     target_degrees = filters.get('degree', '1')
@@ -152,16 +130,35 @@ def get_relative_counts(filters):
         LIMIT 100;
     """
     # box search
-    MATCH_BLOCK = build_match_block_from_location(filters)
+    target_box = filters.get('box')
+    target_center = filters.get('center')
+    target_circle = filters.get('circle')
 
-    q = f"""
-        {MATCH_BLOCK}
-        WITH box
-        // Traverse family relations up to n degrees and check if they vote at the same box
-        MATCH (person)-[:{target_relationships}*1..{target_degrees}]->(relative:Person)-[:VOTES_AT]->(b)
-        WITH person, relative
-        {RETURN_BLOCK}
-    """
+    if target_box:
+        q = f"""
+            MATCH (relative:Person)--(box:Box)
+            WHERE elementId(box) = '{target_box}'
+            WITH relative
+            MATCH (person)-[:{target_relationships}*1..{target_degrees}]->(relative:Person)
+            {RETURN_BLOCK}
+        """
+    elif target_center:
+        q = f"""
+            MATCH (relative:Person)--(box:Box)--(center:Center)
+            WHERE elementId(center) = '{target_center}'
+            WITH relative
+            MATCH (person)-[:{target_relationships}*1..{target_degrees}]->(relative:Person)
+            {RETURN_BLOCK}
+        """
+    else:
+        q = f"""
+            MATCH (relative:Person)--(box:Box)--(center:Center)--(circle:Circle)
+            WHERE elementId(circle) = '{target_circle}'
+            WITH relative
+            MATCH (person)-[:{target_relationships}*1..{target_degrees}]->(relative:Person)
+            {RETURN_BLOCK}
+        """
+
     print('execuitng query ... ')
     data = run_query(q)
 
@@ -173,7 +170,7 @@ def get_person_influence(filters):
     target_degrees = filters.get('degree', '1')
 
     q = f"""
-        MATCH (voter:Person {{national_no: '{target_national_no}'}}) -[:({target_relationships})*1..{target_degrees}]- (relatives)
+        MATCH (voter:Person {{national_no: '{target_national_no}'}}) -[:({target_relationships})*1..{target_degrees}]- (relatives: Person)
         MATCH (relatives) -[r1:VOTES_AT]-> (b1)
         MATCH (voter) -[r2:VOTES_AT]-> (b2)
         WITH voter, relatives, collect(distinct b1) + collect(distinct b2) AS b, r1, r2
@@ -213,19 +210,25 @@ def run_clef(filters):
 
     if target_box:
         MATCH_BLOCK = f"""
-            MATCH (person)-[:{target_relationships}*1..{target_degrees}]-(relative:Person)-->(box:Box)
+            MATCH (relative:Person)--(box:Box)
             WHERE elementId(box) = '{target_box}'
+            WITH relative
+            MATCH (person)-[:{target_relationships}*1..{target_degrees}]-(relative:Person)
             
         """
     elif target_center:
         MATCH_BLOCK = f"""
-            MATCH (person)-[:{target_relationships}*1..{target_degrees}]-(relative:Person)-->(box:Box)--(center:Center)
+            MATCH (relative:Person)--(box:Box)--(center:Center)
             WHERE elementId(center) = '{target_center}'
+            WITH relative
+            MATCH (person)-[:{target_relationships}*1..{target_degrees}]-(relative:Person)
         """
     else:
         MATCH_BLOCK = f"""
-            MATCH (person)-[:{target_relationships}*1..{target_degrees}]-(relative:Person)-->(box:Box)--(center:Center)--(circle:Circle)
+            MATCH (relative:Person)--(box:Box)--(center:Center)--(circle:Circle)
             WHERE elementId(circle) = '{target_circle}'
+            WITH relative
+            MATCH (person)-[:{target_relationships}*1..{target_degrees}]-(relative:Person
         """
     
     
@@ -259,6 +262,6 @@ def run_clef(filters):
     for tup in clef_result.itertuples():
         out.append(gds.util.asNode(tup.nodeId)._properties | {'score': tup.spread})
     
-    out = pd.DataFrame(out)[_props].sort_values('score', ascending=False)
+    out = pd.DataFrame(out)[_props].sort_values('score', ascending=False).reset_index(drop=True)
     return out
 # --------------------------------------------------------------------------------------------------
