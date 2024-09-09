@@ -73,6 +73,9 @@ if search_trigger:
         .pipe(lambda x: x[['num_relatives', 'influence_perc'] + [c for c in x.columns if c not in ['num_relatives', 'influence_perc']]])
     )
     st.write(data)
+
+    family_value_counts = data['family_name'].value_counts()
+    
 else:
     st.write('Click on Search to get the results.')
 

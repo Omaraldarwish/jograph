@@ -115,11 +115,12 @@ def get_relative_counts(filters):
     target_degrees = filters.get('degree', '1')
     RETURN_BLOCK = """
         RETURN
+            DISTINCT
             person.first_name + ' ' + person.father_name + ' ' + person.grand_name + ' ' + person.family_name as full_name,
             // person.first_name as first_name,
             // person.father_name as father_name,
             // person.grand_name as grand_name,
-            // person.family_name as family_name,
+            person.family_name as family_name,
             person.national_no as national_no,
             person.phone_number as phone_number,
             person.principal_coordinator as principal_coordinator,
@@ -168,73 +169,39 @@ def get_person_influence(filters):
     target_national_no = filters.get('national_no')
     target_relationships = f"({'|'.join(filters.get('relationship'))})"
     target_degrees = filters.get('degree', '1')
-
+ 
     q = f"""
         MATCH (voter:Person {{national_no: '{target_national_no}'}}) -[:({target_relationships})*1..{target_degrees}]- (relatives: Person)
-        MATCH (relatives) -[r1:VOTES_AT]-> (b1)
-        MATCH (voter) -[r2:VOTES_AT]-> (b2)
+        OPTIONAL MATCH (relatives) -[r1:VOTES_AT]-> (b1)
+        OPTIONAL  MATCH (voter) -[r2:VOTES_AT]-> (b2)
         WITH voter, relatives, collect(distinct b1) + collect(distinct b2) AS b, r1, r2
         UNWIND b AS singleb
         OPTIONAL MATCH (ce) -[r3:HAS_BOX]-> (singleb)
         UNWIND ce AS singlece
         MATCH (c) -[r4:HAS_CENTER]-> (singlece)
-        RETURN voter, relatives, b, ce, c, r1, r2, r3, r4
-    """
-
-    with get_driver().session() as session: #type: ignore
-        res = session.run(q)
-        neo4j_graph = res.graph()
-    
-    _nodes = []
-    for node in neo4j_graph.nodes:
-        _n = dict(node)
-        _n['id'] = node.id
-        _label = list(node.labels)[0]
-        _n['label'] = _label
-
-        if _label == 'Person':
-            _n['color'] = 'aliceblue'
-            _n['display'] = _n["first_name"]
-            _n['pos_label'] = f'1_{_label}'
-        elif _label == 'Box':
-            _n['color'] = 'darkred'
-            _n['display'] = _n["name"]
-            _n['pos_label'] = f'2_{_label}'
-        elif _label == 'Center':
-            _n['color'] = 'forestgreen'
-            _n['display'] = _n["name"]
-            _n['pos_label'] = f'3_{_label}'
-        else:
-            _n['color'] = 'darkturquoise'
-            _n['display'] = _n["name"]
-            _n['pos_label'] = f'4_{_label}'
-        
-        _nodes.append(_n)
-    
-    _edges = [(e.start_node.id, e.end_node.id, e.type) for e in neo4j_graph.relationships]
-
-    G = nx.DiGraph()
-    G.add_nodes_from([(node['id'], node) for node in _nodes])
-    for edge in _edges:
-        G.add_edge(edge[0], edge[1], type=edge[2])
-    
-
-    q = f"""
-        MATCH (voter:Person {{national_no: '{target_national_no}'}}) -[:({target_relationships})*1..{target_degrees}]- (relatives: Person)
-        MATCH (relatives) -[r1:VOTES_AT]-> (b1)
-        MATCH (voter) -[r2:VOTES_AT]-> (b2)
-        WITH voter, relatives, collect(distinct b1) + collect(distinct b2) AS b, r1, r2
-        UNWIND b AS singleb
-        OPTIONAL MATCH (ce) -[r3:HAS_BOX]-> (singleb)
-        UNWIND ce AS singlece
-        MATCH (c) -[r4:HAS_CENTER]-> (singlece)
-        RETURN c.name as circle_name, ce.name as center_name, count(relatives) as num_relatives
+        RETURN DISTINCT
+            relatives.first_name + ' ' + relatives.father_name + ' ' + relatives.grand_name + ' ' + relatives.family_name as full_name,
+            relatives.circle as circle,
+            relatives.center as center,
+            relatives.box as box,
+            relatives.national_no as national_no,
+            relatives.phone_number as phone_number,
+            relatives.principal_coordinator as principal_coordinator,
+            relatives.sub_coordinator as sub_coordinator,
+            relatives.primary_key as primary_key
     """
 
     data = run_query(q)
+    
+    if data:
+        df2 = pd.DataFrame(data)
 
-
-    return G, pd.DataFrame(data).sort_values(['circle_name', 'center_name'])
+        df1 = df2.groupby(['circle', 'center']).agg(num_relatives=('full_name', 'count')).reset_index().sort_values(['circle', 'center'])
+    else:
+        df2 = pd.DataFrame()
+        df1 = pd.DataFrame()
+    
+    return df1, df2
 
 def run_clef(filters):
     target_box = filters.get('box')
