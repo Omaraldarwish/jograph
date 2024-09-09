@@ -21,6 +21,9 @@ with st.sidebar:
 
     selected_degree = st.slider('Degree', min_value=1, max_value=5, value=3)
 
+if not selected_national_no:
+    st.stop()
+
 query_filters = {
         'national_no': selected_national_no,
         'relationship': selected_relationships,
@@ -32,8 +35,7 @@ graph, data = get_person_influence(query_filters)
 st.dataframe(data, use_container_width=True)
 
 # --------------------------------------------------------------------------------------------------
-pos = nx.nx_agraph.graphviz_layout(graph, prog='twopi')
-
+pos = nx.multipartite_layout(graph, subset_key='pos_label', align='horizontal')
 edge_x = []
 edge_y = []
 for edge in graph.edges():
@@ -95,7 +97,6 @@ fig = go.Figure(data=[edge_trace, node_trace],
                     margin=dict(b=0,l=0,r=0,t=0),
                     xaxis=dict(showgrid=False, zeroline=False),
                     yaxis=dict(showgrid=False, zeroline=False),
-                    height=1400
                 ),
                 )
 

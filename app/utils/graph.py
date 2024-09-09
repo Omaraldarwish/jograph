@@ -195,15 +195,19 @@ def get_person_influence(filters):
         if _label == 'Person':
             _n['color'] = 'aliceblue'
             _n['display'] = _n["first_name"]
+            _n['pos_label'] = f'1_{_label}'
         elif _label == 'Box':
             _n['color'] = 'darkred'
             _n['display'] = _n["name"]
+            _n['pos_label'] = f'2_{_label}'
         elif _label == 'Center':
             _n['color'] = 'forestgreen'
-            _n['display'] = ""#_n["name"]
+            _n['display'] = _n["name"]
+            _n['pos_label'] = f'3_{_label}'
         else:
             _n['color'] = 'darkturquoise'
             _n['display'] = _n["name"]
+            _n['pos_label'] = f'4_{_label}'
         
         _nodes.append(_n)
     
@@ -230,7 +234,7 @@ def get_person_influence(filters):
     data = run_query(q)
 
 
-    return G, pd.DataFrame(data)
+    return G, pd.DataFrame(data).sort_values(['circle_name', 'center_name'])
 
 def run_clef(filters):
     target_box = filters.get('box')
