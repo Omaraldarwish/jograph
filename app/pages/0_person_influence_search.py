@@ -27,8 +27,12 @@ query_filters = {
         'degree': selected_degree
     }
 
-graph = get_person_influence(query_filters)
-pos = nx.nx_agraph.graphviz_layout(graph, prog='sfdp')
+graph, data = get_person_influence(query_filters)
+
+st.write(data)
+
+# --------------------------------------------------------------------------------------------------
+pos = nx.nx_agraph.graphviz_layout(graph, prog='twopi')
 
 edge_x = []
 edge_y = []
@@ -48,9 +52,7 @@ edge_trace = go.Scatter(
     hoverinfo='none',
     mode='lines')
 
-hover_vars = {
-    'Person':['full_name', 'national_no', 'primary_key', 'dob'],
-}
+person_hover_vars = ['full_name', 'national_no', 'primary_key', 'dob']
 node_x = []
 node_y = []
 node_text = []
@@ -58,12 +60,17 @@ hover_text = []
 colors = []
 for node in graph.nodes():
     _node = graph.nodes[node]
+    _label = _node.get('label')
     x, y = pos[node]
     node_x.append(x)
     node_y.append(y)
     node_text.append(_node.get('display'))
     colors.append(_node.get('color'))
-    hover_text.append(f"<br>".join([f"{k}: {_node.get(k)}" for k in hover_vars.get(_node.get('label'), ['display'])]))
+
+    if _label == 'Person':
+        hover_text.append(f"<br>".join([f"{k}: {_node.get(k)}" for k in person_hover_vars]))
+    else:
+        hover_text.append(f"{'name'}: {_node.get('display')}")
 
 node_trace = go.Scatter(
     x=node_x, y=node_y,
@@ -72,10 +79,9 @@ node_trace = go.Scatter(
     hovertext=hover_text,
     text=node_text,
     textposition="top center",
-    # fillcolor=colors,
     marker=dict(
         showscale=False,
-        size=40,
+        size=30,
         line_width=2,
         color=colors,
     ),
@@ -92,3 +98,4 @@ fig = go.Figure(data=[edge_trace, node_trace],
                 )
 
 st.plotly_chart(fig, use_container_width=True)
+# --------------------------------------------------------------------------------------------------

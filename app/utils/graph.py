@@ -200,7 +200,7 @@ def get_person_influence(filters):
             _n['display'] = _n["name"]
         elif _label == 'Center':
             _n['color'] = 'forestgreen'
-            _n['display'] = _n["name"]
+            _n['display'] = ""#_n["name"]
         else:
             _n['color'] = 'darkturquoise'
             _n['display'] = _n["name"]
@@ -214,7 +214,23 @@ def get_person_influence(filters):
     for edge in _edges:
         G.add_edge(edge[0], edge[1], type=edge[2])
     
-    return G
+
+    q = f"""
+        MATCH (voter:Person {{national_no: '{target_national_no}'}}) -[:({target_relationships})*1..{target_degrees}]- (relatives: Person)
+        MATCH (relatives) -[r1:VOTES_AT]-> (b1)
+        MATCH (voter) -[r2:VOTES_AT]-> (b2)
+        WITH voter, relatives, collect(distinct b1) + collect(distinct b2) AS b, r1, r2
+        UNWIND b AS singleb
+        OPTIONAL MATCH (ce) -[r3:HAS_BOX]-> (singleb)
+        UNWIND ce AS singlece
+        MATCH (c) -[r4:HAS_CENTER]-> (singlece)
+        RETURN c.name as circle_name, ce.name as center_name, count(relatives) as num_relatives
+    """
+
+    data = run_query(q)
+
+
+    return G, pd.DataFrame(data)
 
 def run_clef(filters):
     target_box = filters.get('box')
@@ -250,7 +266,6 @@ def run_clef(filters):
             WITH relative
             MATCH (person)-[:{target_relationships}*1..{target_degrees}]-(relative:Person
         """
-    
     
     gds = get_gds()
     
