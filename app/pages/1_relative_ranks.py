@@ -39,7 +39,7 @@ with st.sidebar:
         st.error('Please select at least one relationship.')
         st.stop()
 
-    selected_degree = st.slider('Degree', min_value=1, max_value=5, value=3)
+    selected_degree = st.slider('Degree', min_value=1, max_value=3, value=2)
 
 query_filters = {
         'circle': selected_circle,

@@ -23,8 +23,6 @@ with st.sidebar:
     filter_center = col1.checkbox('Filter by Center', value=True)
     selected_center = col2.selectbox('Center', options=_values, format_func=lambda x: _format[x], disabled=not filter_center)
 
-    
-
     col1, col2 = st.columns([1, 2], vertical_alignment='center')
     _tmp = get_boxes(selected_circle, selected_center)
     _values = [x['box_id'] for x in _tmp]
@@ -40,6 +38,8 @@ with st.sidebar:
         st.error('Please select at least one relationship.')
         st.stop()
     
+    selected_degree = st.slider('Degree', min_value=1, max_value=3, value=2)
+
     st.markdown("<hr>", unsafe_allow_html=True)
 
     selected_probability = st.number_input('Probability', min_value=0.0, max_value=1.0, value=0.1)
@@ -53,7 +53,8 @@ query_filters = {
         'relationship': selected_relationships,
         'probability': selected_probability,
         'seedSetSize': selected_seedSetSize,
-        'monteCarloSimulations': selected_monteCarloSimulations
+        'monteCarloSimulations': selected_monteCarloSimulations,
+        'degree': selected_degree
     }
 
 counts = get_counts_by_location(query_filters)
