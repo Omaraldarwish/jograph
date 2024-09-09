@@ -29,7 +29,7 @@ query_filters = {
 
 graph, data = get_person_influence(query_filters)
 
-st.write(data)
+st.dataframe(data, use_container_width=True)
 
 # --------------------------------------------------------------------------------------------------
 pos = nx.nx_agraph.graphviz_layout(graph, prog='twopi')
@@ -94,7 +94,9 @@ fig = go.Figure(data=[edge_trace, node_trace],
                     hovermode='closest',
                     margin=dict(b=0,l=0,r=0,t=0),
                     xaxis=dict(showgrid=False, zeroline=False),
-                    yaxis=dict(showgrid=False, zeroline=False))
+                    yaxis=dict(showgrid=False, zeroline=False),
+                    height=1400
+                ),
                 )
 
 st.plotly_chart(fig, use_container_width=True)
